@@ -1,65 +1,120 @@
-const itemName = document.getElementById('item_name');
-const deadline = document.getElementById('deadline');
-const priority = document.getElementById('priority');
-const addBtn = document.getElementById('add_item');
+const todayDiv = document.querySelector('.today');
+const futureDiv = document.querySelector('.future');
+const completedDiv = document.querySelector('.completed'); 
+
+const itemInput = document.getElementById('itemName');
+const priorityInput = document.getElementById('selectPriority');
+const dateInput = document.getElementById('calendar');
+const addItemBtn = document.querySelector('.btn');
+
+// Adding task already present in local storage
+let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+tasks.forEach((obj,idx)=>{
+    let {name, date, priority} = obj;
+    let taskDiv = makeItem(name,priority,date);
+    if(obj.completed==true){
+        addTaskToList(taskDiv,date,name,priority,true);
+    }else{
+        addTaskToList(taskDiv,date,name,priority,false);
+    }
+});
+//--------------------------------------------------
 
 
-let todoData = {};
-
-addBtn.addEventListener('click', ()=>{
-
-    let iName = itemName.value;
-    let dLine = deadline.value;
-    let prty = priority.value;
-
-    todoData = {
-        'iName' : iName,
-        'dLine' : dLine,
-        'prty' : prty
-    };
-
-    addData(todoData);
-    itemName.value = '';
-    deadline.value = '';
-    priority.value = '';
-
+// adding task on clicking add Item Button
+addItemBtn.addEventListener('click',(e)=>{
+    console.log('add item pressed');
+    let itemName = itemInput.value;
+    let priority = priorityInput[priorityInput.selectedIndex].textContent;
+    let date = dateInput.value;
+    if(itemName && priority && date){
+        console.log('all values entered');
+        let formattedDate = new Date(date).toLocaleDateString('en-GB', {day: 'numeric', month: 'numeric', year: 'numeric'});
+        let taskDiv = makeItem(itemName,priority,formattedDate);
+        addTaskToList(taskDiv,formattedDate,itemName,priority,false);
+        // set added task to local storage
+        let arr = JSON.parse(localStorage.getItem('tasks'))||[];
+        let obj = {
+            name:itemName,
+            date:formattedDate,
+            priority:priority,
+            completed:false
+        }
+        arr.push(obj);
+        localStorage.setItem('tasks',JSON.stringify(arr));
+        }else{
+            throw Error('Enter all values');
+        }
 })
+//------------------------------------------------
 
-function addData(todoData){
-    let todo = JSON.parse(localStorage.getItem('todo')) || [];
-    todo.push(todoData);
-    localStorage.setItem('todo', JSON.stringify(todo))
-    // showTodo();
+
+function makeItem(itemName,priority,date){
+    let div = document.createElement('div');
+    div.innerHTML=`
+        <div>${itemName}</div>
+        <div>Priority: ${priority}</div>
+        <div>${date}</div>
+        <div id="taskIcon">
+            <img src="images/check-circle.png" id="check" alt="mark complete">
+            <img src="images/trash.png" id="trash" alt="delete">
+        </div>
+    `;
+
+    return div;
 }
 
+function addTaskToList(taskDiv,date,itemName,priority,completed){
+    taskDiv.classList.add('task');
+    const today = new Date();
+    const todayDateString = today.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); // Format: dd-mm-yyyy
 
-function showTodo(){
-    const todaysContainer = document.getElementById('todays_todo_list');
-    let todoList = JSON.parse(localStorage.getItem('todo')) || [];
+    const parts = date.split('-');
+    const formattedDate = `${parts[0]}-${parts[1]}-${parts[2]}`; // Format: dd-mm-yyyy
 
-    for(let i=0; i<todoList.length; i++){
-      let todo = todoList[i]; 
-      let todoElement = document.createElement("div");
-    todoElement.classList.add('todaysListContainer')
-     const menuChildren = `
-     <span>${todo.iName}</span>
-     <span>${todo.dLine}</span>
-     <span>${todo.prty}</span>
-     <div>
-     <span><button>M</button></span>
-     <span><button>D</button></span>
-     </div>
-     `;
-     todoElement.innerHTML = menuChildren;
-     todaysContainer.append(todoElement);
-  }
-  }
+    const selectedDateString = formattedDate;
 
-
+    let checkBtn = taskDiv.querySelector('#check');
+    let trashBtn = taskDiv.querySelector('#trash');
+    if (completed) {
+        completedDiv.append(taskDiv);
+        checkBtn.classList.add('hide');
+        taskDiv.style.color='black';
+        taskDiv.style.backgroundColor='white';
+        trashBtn.setAttribute('src', 'images/trash-black.png');
+    } else {
+        if (todayDateString === selectedDateString) todayDiv.append(taskDiv);
+        else futureDiv.append(taskDiv);
+    }
 
 
+    addEventToBtns(checkBtn,trashBtn,taskDiv,itemName,priority,formattedDate);
+}
 
-// window.onload = ()=>{
-//     showTodo();
-// }
-showTodo();
+function addEventToBtns(checkBtn,trashBtn,taskDiv,itemName,priority,date){
+    checkBtn.addEventListener('click',(e)=>{//move task to completed tasks
+        completedDiv.appendChild(taskDiv);
+        checkBtn.classList.add('hide');
+        taskDiv.style.color='black';
+        taskDiv.style.backgroundColor='white';
+        trashBtn.setAttribute('src', 'images/trash-black.png');
+        //change localStorage completes:true
+        let arr = JSON.parse(localStorage.getItem('tasks')) || [];
+        for (let obj of arr) {
+            if (obj.name === itemName) {
+                obj.completed = true;
+                break;
+            }
+        }
+        localStorage.setItem('tasks', JSON.stringify(arr));
+;
+    })
+    trashBtn.addEventListener('click',(e)=>{//delete tasks
+        taskDiv.remove();
+        //remove from localStorage
+        let arr = JSON.parse(localStorage.getItem('tasks')) || [];
+        arr = arr.filter(obj=>obj.name!==itemName);
+        localStorage.setItem('tasks',JSON.stringify(arr));
+    })
+}
+
